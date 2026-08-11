@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>剧本｜itty‑sockets联机版</title>
+    <title>剧本｜itty-sockets联机版</title>
     <style>
         * {margin:0;padding:0;box-sizing:border-box;}
         body {
@@ -102,7 +102,7 @@
 <body>
 <div class="toolbar">
     <span>房间ID:</span>
-    <input id="roomIdInput" value="my‑script‑room‑001">
+    <input id="roomIdInput" value="my-script-room-001">
     <button onclick="connectRoom()">连接房间</button>
     <span>身份：</span>
     <select id="roleSelect">
@@ -136,10 +136,15 @@
 </div>
 
 <script>
-// itty‑sockets 直接内嵌客户端，不用import，单html可用
-let connect=(e,s={})=>{let t,n=[],o=[],a=0,r=()=>{t||(t=new WebSocket(`wss://ittysockets.io/r/${e??""}?${new URLSearchParams(s)}`),t.onopen=()=>{for(;n.length;)t?.send(n.shift());a&&t?.close()},t.onmessage=(e,s=JSON.parse(e.data))=>{for(let e of o)e({...s,date:new Date(s.date)})},t.onclose=()=>(a=0,t=null))};return new Proxy(r,{get:(e,s,l)=>({ws:t,send:(e,s)=>{t? t.send(JSON.stringify({type:s??"message",payload:e})):n.push([e,s]);return l},on:(e,s)=>{o.push(({type:l,...p})=>l===e&&s(p));return l},close:()=>a=1}))}
+// itty‑sockets 客户端
+let connect=(e,s={})=>{let t,n=[],o=[],a=0,r=()=>{t||(t=new WebSocket(`wss://ittysockets.io/r/${e??""}?${new URLSearchParams(s)}`),t.onopen=()=>{for(;n.length;)t?.send(n.shift());a&&t?.close()},t.onmessage=(e,s=JSON.parse(e.data))=>{for(let cb of o)cb({...s,date:new Date(s.date)})},t.onclose=()=>(a=0,t=null))};return new Proxy(r,{get:(obj,prop)=>{
+    if(prop==="ws") return t;
+    if(prop==="send") return (payload,type="message")=>{t?t.send(JSON.stringify({type,payload})):n.push({payload,type})};
+    if(prop==="on") return (wantType,callback)=>{o.push((evt)=>{if(evt.type===wantType) callback(evt);})};
+    if(prop==="close") return ()=>{a=1;if(t)t.close();};
+}})}
 
-// =========剧本配置（初始模板）=========
+// =========剧本配置=========
 const storyStages = [
     {stage:1,text:`【第一幕：雨夜案发】
 暴雨夜晚，别墅内传来一声惨叫。
@@ -156,16 +161,13 @@ const baseClueData = [
     {id:3,title:"陌生通话记录",type:"clue",content:"23点12分，一通47秒陌生来电，号码无登记信息。",targetRole:["p1","p3"],isUnlocked:false,triggerStage:3}
 ]
 
-// 全局运行状态
 let socket = null;
 let currentRole = "host";
-// 房间权威状态，只有房主修改后广播，所有人同步
 let roomState = {
     currentStage:1,
     clueData:JSON.parse(JSON.stringify(baseClueData))
 };
 
-// 连接房间
 function connectRoom(){
     const rid = document.getElementById("roomIdInput").value.trim();
     if(!rid)return;
@@ -179,24 +181,20 @@ function connectRoom(){
     socket.on("close",()=>{
         document.getElementById("connStatus").innerText = "❌房间断开";
     })
-    // 监听房主广播的全局状态
-    socket.on("state‑broadcast",(evt)=>{
+    socket.on("state-broadcast",(evt)=>{
         roomState = evt.payload;
         renderAll();
     })
 }
 
-// 房主广播完整房间状态给所有人
 function broadcastState(){
     if(!socket || currentRole !== "host") return;
-    socket.send(roomState,"state‑broadcast");
+    socket.send(roomState,"state-broadcast");
 }
 
-// 房主：下一剧情环节
 function nextStage(){
     if(currentRole !== "host") return;
     roomState.currentStage +=1;
-    // 环节自动解锁
     roomState.clueData.forEach(c=>{
         if(c.triggerStage>0 && c.triggerStage === roomState.currentStage){
             c.isUnlocked = true;
@@ -205,7 +203,6 @@ function nextStage(){
     broadcastState();
 }
 
-// 房主：手动开放单条线索
 function hostUnlockClue(clueId){
     if(currentRole !== "host") return;
     const item = roomState.clueData.find(x=>x.id === clueId);
@@ -215,7 +212,6 @@ function hostUnlockClue(clueId){
     }
 }
 
-// 渲染页面（每个人根据自己角色，过滤展示内容）
 function renderAll(){
     currentRole = document.getElementById("roleSelect").value;
     document.getElementById("stageText").innerText = roomState.currentStage;
