@@ -1,314 +1,279 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>雾起云浮｜ittysockets房间联机（无key免注册）</title>
-<!-- ittysockets 内联客户端，不需要外部CDN -->
-<script>
-let connect=(e,s={})=>{let a,t,n=[],p={},o=()=>(a||(a=new WebSocket((/^wss?:/i.test(e)?e:`wss://ittysockets.io/r/${encodeURIComponent(e)}?${new URLSearchParams(s)}`)),a.onopen=()=>{for(;n.length;)a?.send(n.shift())},a.onmessage=e=>{let s=JSON.parse(e.data);(p.message||[]).forEach(r=>r({...s}))},a.onclose=()=>{a=null},a.onerror=()=>{a=null}});return new Proxy(o,{get:(e,l)=>{if(l==="send")return(...r)=>{o(),a?.readyState===1?a.send(JSON.stringify(r.length>1?r[0]:r[0])):n.push(r.length>1?r[0]:r[0])};if(l==="on")return(e,r)=>{if(!p[e])p[e]=[];return p[e].push(r)};return e[l]}})};
-</script>
-<style>
-*{box-sizing:border-box;font-family:system-ui, "Microsoft YaHei", sans-serif;}
-body{max-width:1440px;margin:12px auto;padding:0 12px;background:#0c0c12;color:#e6e6e6;}
-.box{background:#161620;padding:18px;border-radius:12px;margin:12px 0;border:1px solid #333;}
-button{padding:10px 16px;margin:5px;background:#293854;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;}
-button.dm{background:#704818;}
-button.secondary{background:#304060;}
-input{padding:8;width:300px;background:#0f0f18;color:#fff;border:1px solid #444;border-radius:6px;}
-.tip{color:#ffd060;font-size:13px;line-height:1.5;}
-.hidden{display:none;}
-.chatbox{max-height:260px;overflow-y:auto;background:#0a0a10;padding:10;border-radius:8;}
-.msg{margin:6px 0;padding:6;border-bottom:#242850 1px solid;}
-.private-card{background:#1c1212;padding:14;border-radius:10;border:1px solid #703030;margin:8px 0;}
-.evidence{background:#12181c;padding:10;border-radius:8;border:1px solid #336070;margin:6px 0;}
-h3,h4{margin-top:0;color:#d4b478;}
-.split{display:grid;grid-template-columns:340px 1fr;gap:16px;}
-.stage-tag{display:inline-block;background:#603000;padding:2px 6;border-radius:3;margin-left:8;}
-.lock-area{color:#888;text-align:center;padding:30px 10;font-size:16px;}
-.tab-btn{padding:6px 10;margin:4px;}
-.content-tab{display:none;}
-.content-tab.show{display:block;}
-</style>
+    <meta charset="UTF-8">
+    <title>剧本｜itty‑sockets联机版</title>
+    <style>
+        * {margin:0;padding:0;box-sizing:border-box;}
+        body {
+            background:#171721;
+            color:#e6e6f2;
+            padding:24px;
+            font-family:system-ui, sans-serif;
+            max-width:1100px;
+            margin:0 auto;
+            line-height:1.7;
+        }
+        .container{
+            display:grid;
+            grid-template-columns: 1fr 1fr;
+            gap:24px;
+        }
+        @media(max-width:768px){
+            .container{grid-template-columns:1fr;}
+        }
+        .story-box{
+            background:#1f1f30;
+            padding:20px;
+            border-radius:10px;
+            border:1px solid #383855;
+        }
+        .story-content{
+            min-height:220px;
+            margin:16px 0;
+            white-space:pre-wrap;
+        }
+        .panel-box{
+            background:#1f1f30;
+            padding:20px;
+            border-radius:10px;
+            border:1px solid #383855;
+        }
+        .toolbar{
+            margin-bottom:16px;
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            align-items:center;
+        }
+        select,button,input{
+            padding:7px 12px;
+            font-size:14px;
+            border:none;
+            border-radius:4px;
+        }
+        button{cursor:pointer;}
+        .host-panel{
+            background:#222233;
+            padding:14px;
+            border-radius:6px;
+            margin-bottom:20px;
+        }
+        .host-item{
+            padding:10px 0;
+            border-bottom:1px solid #333348;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:8px;
+        }
+        .host-clue-title{
+            color:#ddddff;
+            font-weight:500;
+        }
+        .host-mask-text{
+            color:#777;
+            font-style:italic;
+        }
+        .clue-item,.memory-item{
+            background:#212132;
+            padding:12px 14px;
+            border-radius:6px;
+            margin:8px 0;
+        }
+        .memory-item{
+            background:#272038;
+            border-left:3px solid #9468c2;
+        }
+        .tag{
+            font-size:12px;
+            padding:2px 6px;
+            border-radius:3px;
+            margin-right:6px;
+        }
+        .tag-clue{background:#284270;}
+        .tag-memory{background:#542f74;}
+        .tag-unlock{background:#246338;}
+        .tag-lock{background:#603030;}
+        .status-bar{margin:8px 0;color:#ccc;}
+    </style>
 </head>
 <body>
-<div class="split">
-<!-- 左侧：房间登录+角色选择+DM控制 -->
-<div>
-<div class="box">
-<h3>房间联机（免注册，输入房间号）</h3>
-<div class="tip">所有人填写**完全一样房间号**即可互通，无需任何密钥</div>
-<div>
-<label>房间号：</label>
-<input id="roomInput" placeholder="自定义，如wuyun666" value="wuyun666">
-<button onclick="joinRoom()">进入房间</button>
+<div class="toolbar">
+    <span>房间ID:</span>
+    <input id="roomIdInput" value="my‑script‑room‑001">
+    <button onclick="connectRoom()">连接房间</button>
+    <span>身份：</span>
+    <select id="roleSelect">
+        <option value="host">👑房主主持人</option>
+        <option value="p1">👤玩家P1</option>
+        <option value="p2">👤玩家P2</option>
+        <option value="p3">👤玩家P3</option>
+    </select>
+    <span>环节：<b id="stageText">1</b></span>
+    <button onclick="nextStage()">下一环节(仅房主)</button>
 </div>
-<div id="roomStatus" style="margin-top:10px;">未加入房间</div>
-<hr style="margin:12px 0;border-color:#333;">
-<h4>DM阶段控制（房主）<span class="stage-tag" id="nowStage">阶段0：寒暄</span></h4>
-<button class="dm" onclick="sendStage(1)">阶段1 一层线索</button>
-<button class="dm" onclick="sendStage(2)">阶段2 二层+随身线索</button>
-<button class="dm" onclick="sendStage(3)">阶段3 地下室线索</button>
-<button class="dm" onclick="sendStage(4)">阶段4 全解锁投票</button>
-</div>
-<div class="box">
-<h3>选择你的角色</h3>
-<div id="roleList"></div>
-</div>
-</div>
-<!-- 右侧游戏面板 -->
-<div class="box">
-<div>
-<button class="tab-btn" data-tab="script">个人剧本</button>
-<button class="tab-btn" data-tab="clue">分阶段线索</button>
-<button class="tab-btn" data-tab="map">云浮馆地图</button>
-<button class="tab-btn" data-tab="vote">投票盘凶</button>
-<button class="tab-btn" data-tab="truth">全局复盘【上锁】</button>
-<button class="tab-btn" data-tab="chat">全场公聊</button>
-</div>
-<!-- 剧本 -->
-<div id="tab-script" class="content-tab show">
-<h4>你的专属角色剧本（仅自己可见）</h4>
-<div class="private-card" id="myScript"></div>
-</div>
-<!-- 线索 -->
-<div id="tab-clue" class="content-tab">
-<h4>分阶段搜证线索</h4>
-<div id="stage1-box">
-<h4>【阶段1 · 一层公共线索】</h4>
-<div id="ev-stage1"></div>
-</div>
-<div id="stage2-box" class="lock-area">
-<h4>【阶段2 · 二层+随身专属】<span style="color:#999">未解锁</span></h4>
-<div id="ev-stage2"></div>
-</div>
-<div id="stage3-box" class="lock-area">
-<h4>【阶段3 · 地下室秘密线索】<span style="color:#999">未解锁</span></h4>
-<div id="ev-stage3"></div>
-</div>
-<p style="color:#aaa">蓝色=全员公共；紫色=仅本人专属物证</p>
-</div>
-<!-- 地图 -->
-<div id="tab-map" class="content-tab">
-<div class="evidence">
-<h4>一层</h4>
-<p>正门、门厅、杂物房、厨房、餐厅，东侧楼梯爆炸损毁</p>
-</div>
-<div class="evidence">
-<h4>二层</h4>
-<p>客房、书房、女仆房，窗户全封木板</p>
-</div>
-<div class="evidence">
-<h4>地下室</h4>
-<p>六间炼金密室，存放墓碑、干尸、西卜书信</p>
-</div>
-</div>
-<!-- 投票 -->
-<div id="tab-vote" class="content-tab">
-<h4>投票指认凶手（阶段4解锁）</h4>
-<div id="vote-lock" class="lock-area">当前阶段未开放投票</div>
-<div id="voteBox" class="hidden">
-<select id="voteSel">
-<option value="kaitai">柯太太(露曦)</option>
-<option value="keshaw">柯少爷(柯瞻)</option>
-<option value="yunqing">云晴</option>
-<option value="lingsi">零四</option>
-<option value="wuxiao">雾晓</option>
-</select>
-<button onclick="submitVote()">提交投票全场同步</button>
-<h4>投票记录</h4>
-<div class="chatbox" id="voteLog"></div>
-</div>
-</div>
-<!-- 复盘 -->
-<div id="tab-truth" class="content-tab">
-<h4>全局完整复盘（游戏结束密码wuyun1914解锁）</h4>
-<div class="lock-area" id="truthLockBlock">
-密码：<input id="truthPwd" placeholder="输入密码">
-<button class="dm" onclick="unlockTruth()">解锁复盘</button>
-</div>
-<div id="truthBox" class="hidden" style="white-space:pre-line;color:#ccc;"></div>
-</div>
-<!-- 公聊 -->
-<div id="tab-chat" class="content-tab">
-<h4>全场实时公聊</h4>
-<div class="chatbox" id="publicChat"></div>
-<input id="chatInput" style="width:75%;min-height:40px" placeholder="输入发言">
-<button onclick="sendChatMsg()">发送</button>
-</div>
-</div>
+<div class="status-bar" id="connStatus">未连接房间</div>
+
+<div class="container">
+    <div class="story-box">
+        <h3>📖 当前剧本剧情</h3>
+        <div class="story-content" id="storyText"></div>
+    </div>
+
+    <div class="panel-box">
+        <div id="hostView" class="host-panel" style="display:none;">
+            <h4>房主管理面板（仅看线索标题，看不到正文）</h4>
+            <div id="hostList"></div>
+        </div>
+
+        <h3>📜我的线索</h3>
+        <div id="myClues"></div>
+        <h3>🗝️我的记忆碎片</h3>
+        <div id="myMemory"></div>
+    </div>
 </div>
 
 <script>
-const el = s=>document.querySelector(s);
-let socketChannel = null;
-let myRoom = "";
+// itty‑sockets 直接内嵌客户端，不用import，单html可用
+let connect=(e,s={})=>{let t,n=[],o=[],a=0,r=()=>{t||(t=new WebSocket(`wss://ittysockets.io/r/${e??""}?${new URLSearchParams(s)}`),t.onopen=()=>{for(;n.length;)t?.send(n.shift());a&&t?.close()},t.onmessage=(e,s=JSON.parse(e.data))=>{for(let e of o)e({...s,date:new Date(s.date)})},t.onclose=()=>(a=0,t=null))};return new Proxy(r,{get:(e,s,l)=>({ws:t,send:(e,s)=>{t? t.send(JSON.stringify({type:s??"message",payload:e})):n.push([e,s]);return l},on:(e,s)=>{o.push(({type:l,...p})=>l===e&&s(p));return l},close:()=>a=1}))}
 
-//游戏数据
-const GAME_DATA = {
-currentStage:0,
-roles:[
-{id:"kaitai",name:"柯太太(露曦)",desc:"烧伤健忘",script:`【柯太太】你本名Lucy，当年火场重度烧伤，被柯汉生长期囚禁；你用烛台击杀老爷，制造延时坠楼假象。任务：隐瞒罪行，寻找女儿雾晓。`},
-{id:"keshaw",name:"柯少爷(柯瞻)",desc:"爱慕云晴",script:`【柯少爷】父亲柯江元当年纵火烧死柯卫廉；你四处寻找旧遗嘱防止家产旁落，保护云晴。`},
-{id:"yunqing",name:"云晴",desc:"孤儿院女仆",script:`【云晴】你与零四姐弟，母亲被西卜制成干尸；你误杀Mercy，长期给柯太太下安神药。`},
-{id:"lingsi",name:"零四",desc:"炼金学徒",script:`【零四】体内是柯卫廉灵魂，你点燃炼金药剂烧毁整栋云浮馆，复仇当年火灾。`},
-{id:"wuxiao",name:"雾晓",desc:"孤女",script:`【雾晓】柯太太亲生女儿，今日遭人追杀，无杀人秘密。`}
-],
-stageClues:{
-1:[{name:"厨房",content:"安神药大量残留，长期服用会意识迟钝"}],
-2:{
-public:[{name:"二层书房",content:"满地炼金易燃药剂，是起火原点"}],
-private:{
-kaitai:{name:"随身纱布",content:"带灼烧痕迹，延时杀人道具"},
-keshaw:{name:"破损遗嘱",content:"柯家遗产分配文书"},
-yunqing:{name:"炼金面具",content:"勒杀时佩戴的绿色面具"},
-lingsi:{name:"硫磺粉末",content:"纵火原料"},
-wuxiao:{name:"铁皮小盒",content:"防身反击工具"}
-}
-},
-3:[{name:"地下室墓碑",content:"刻有柯卫廉1899遇难日期"}]
-},
-fullTruth:`#雾起云浮完整复盘
-1. 柯汉生被柯太太烛台重击，纱布蜡烛制造坠楼假象；
-2. 二层昏暗，云晴戴面具误杀Mercy；
-3. 零四体内卫廉灵魂点燃炼金药剂，整栋建筑焚毁；
-4. 柯江元当年纵火烧死卫廉，后被困火场窒息；
-5. 雾晓是柯太太亲生女儿，全程无辜。`,
-currentRole:null,
-voteList:[]
+// =========剧本配置（初始模板）=========
+const storyStages = [
+    {stage:1,text:`【第一幕：雨夜案发】
+暴雨夜晚，别墅内传来一声惨叫。
+众人赶到房间，发现出事了。
+大家开始互相问话。`},
+    {stage:2,text:`【第二幕：线索浮现】
+现场开始搜查物证。部分角色获得专属线索。`},
+    {stage:3,text:`【第三幕：回忆涌现】
+过往记忆开始浮现，真相慢慢靠近。`}
+]
+const baseClueData = [
+    {id:1,title:"撕碎的便签",type:"clue",content:"今晚零点老地方见面，不要告诉任何人，纸条边缘沾有雨水。",targetRole:["p1"],isUnlocked:false,triggerStage:2},
+    {id:2,title:"雨夜记忆片段",type:"memory",content:"大雨，黑色雨伞，那个人的脸完全模糊，只记得低沉的说话声。",targetRole:["p2"],isUnlocked:false,triggerStage:0},
+    {id:3,title:"陌生通话记录",type:"clue",content:"23点12分，一通47秒陌生来电，号码无登记信息。",targetRole:["p1","p3"],isUnlocked:false,triggerStage:3}
+]
+
+// 全局运行状态
+let socket = null;
+let currentRole = "host";
+// 房间权威状态，只有房主修改后广播，所有人同步
+let roomState = {
+    currentStage:1,
+    clueData:JSON.parse(JSON.stringify(baseClueData))
 };
 
-window.onload = ()=>{
-renderRoleList();
-bindTabSwitch();
-renderClue();
-};
+// 连接房间
+function connectRoom(){
+    const rid = document.getElementById("roomIdInput").value.trim();
+    if(!rid)return;
+    socket = connect(rid,{echo:true});
+    document.getElementById("connStatus").innerText = "正在连接…";
 
-//加入房间
-function joinRoom(){
-myRoom = el("#roomInput").value.trim();
-if(!myRoom) return alert("请填写房间号");
-socketChannel = connect(myRoom);
-//监听频道收到消息
-socketChannel.on("message",(payload)=>{
-handleRoomMsg(payload);
-});
-el("#roomStatus").innerText = `✅已加入房间：${myRoom}`;
-alert("房间连接成功！告诉朋友填写一模一样房间号即可进来");
-}
-
-//分发收到消息
-function handleRoomMsg(data){
-switch(data.type){
-case "chat": addGlobalChat(data); break;
-case "stageSync": GAME_DATA.currentStage=data.stage;renderClue();break;
-case "vote": GAME_DATA.voteList.push(data);addVoteLog(data);break;
-}
+    socket.on("open",()=>{
+        document.getElementById("connStatus").innerText = "✅房间已连接";
+        renderAll();
+    })
+    socket.on("close",()=>{
+        document.getElementById("connStatus").innerText = "❌房间断开";
+    })
+    // 监听房主广播的全局状态
+    socket.on("state‑broadcast",(evt)=>{
+        roomState = evt.payload;
+        renderAll();
+    })
 }
 
-//DM同步阶段给全部人
-function sendStage(num){
-if(!myRoom||!socketChannel) return alert("请先进入房间");
-GAME_DATA.currentStage = num;
-renderClue();
-socketChannel.send({type:"stageSync",stage:num});
+// 房主广播完整房间状态给所有人
+function broadcastState(){
+    if(!socket || currentRole !== "host") return;
+    socket.send(roomState,"state‑broadcast");
 }
 
-//发送聊天
-function sendChatMsg(){
-const txt = el("#chatInput").value.trim();
-if(!txt||!socketChannel||!GAME_DATA.currentRole) return;
-const msg = {type:"chat",name:GAME_DATA.currentRole.name,text:txt};
-socketChannel.send(msg);
-addGlobalChat(msg);
-el("#chatInput").value="";
+// 房主：下一剧情环节
+function nextStage(){
+    if(currentRole !== "host") return;
+    roomState.currentStage +=1;
+    // 环节自动解锁
+    roomState.clueData.forEach(c=>{
+        if(c.triggerStage>0 && c.triggerStage === roomState.currentStage){
+            c.isUnlocked = true;
+        }
+    })
+    broadcastState();
 }
 
-function addGlobalChat(data){
-const box = el("#publicChat");
-const div = document.createElement("div");
-div.className = "msg";
-div.innerText = `【${data.name}】${data.text}`;
-box.appendChild(div);box.scrollTop = box.scrollHeight;
+// 房主：手动开放单条线索
+function hostUnlockClue(clueId){
+    if(currentRole !== "host") return;
+    const item = roomState.clueData.find(x=>x.id === clueId);
+    if(item){
+        item.isUnlocked = true;
+        broadcastState();
+    }
 }
 
-//投票
-function submitVote(){
-if(GAME_DATA.currentStage<4) return alert("未开放投票");
-const rid = el("#voteSel").value;
-const name = GAME_DATA.roles.find(x=>x.id===rid).name;
-const vote = {type:"vote",player:GAME_DATA.currentRole.name,suspect:name};
-socketChannel.send(vote);
-addVoteLog(vote);
+// 渲染页面（每个人根据自己角色，过滤展示内容）
+function renderAll(){
+    currentRole = document.getElementById("roleSelect").value;
+    document.getElementById("stageText").innerText = roomState.currentStage;
+
+    const stageItem = storyStages.find(s=>s.stage === roomState.currentStage);
+    document.getElementById("storyText").innerText = stageItem ? stageItem.text : "剧情结束";
+
+    const hostViewDom = document.getElementById("hostView");
+    const hostListDom = document.getElementById("hostList");
+    const myCluesDom = document.getElementById("myClues");
+    const myMemoryDom = document.getElementById("myMemory");
+    myCluesDom.innerHTML="";myMemoryDom.innerHTML="";hostListDom.innerHTML="";
+
+    if(currentRole === "host"){
+        hostViewDom.style.display = "block";
+        roomState.clueData.forEach(c=>{
+            const div = document.createElement("div");
+            div.className = "host-item";
+            const statusTag = c.isUnlocked
+                ? `<span class="tag tag-unlock">已开放</span>`
+                : `<span class="tag tag-lock">未开放</span>`;
+            div.innerHTML = `
+                <div>
+                    <span class="host-clue-title">${c.title}</span>
+                    ${statusTag}
+                    <span class="tag ${c.type==='clue'?'tag-clue':'tag-memory'}">${c.type==='clue'?'线索':'记忆'}</span>
+                    <span>分配：${c.targetRole.join(",")}</span>
+                    <span class="host-mask-text">【内容对房主隐藏】</span>
+                    ${c.triggerStage>0 ? `<span>自动环节:${c.triggerStage}</span>`:""}
+                </div>
+                <div>
+                    ${!c.isUnlocked ? `<button onclick="hostUnlockClue(${c.id})">开放线索</button>`:""}
+                </div>
+            `;
+            hostListDom.appendChild(div);
+        })
+    }else{
+        hostViewDom.style.display = "none";
+        roomState.clueData.forEach(c=>{
+            if(c.targetRole.includes(currentRole) && c.isUnlocked){
+                if(c.type==="clue"){
+                    let d=document.createElement("div");
+                    d.className="clue-item";
+                    d.innerHTML=`<b>${c.title}</b><br>${c.content}`;
+                    myCluesDom.appendChild(d);
+                }else{
+                    let d=document.createElement("div");
+                    d.className="memory-item";
+                    d.innerHTML=`<b>${c.title}</b><br>${c.content}`;
+                    myMemoryDom.appendChild(d);
+                }
+            }
+        })
+    }
 }
 
-function addVoteLog(data){
-const log = el("#voteLog");
-const div = document.createElement("div");
-div.className = "msg";
-div.innerText = `【${data.player}】指认：${data.suspect}`;
-log.appendChild(div);log.scrollTop = log.scrollHeight;
-}
-
-//渲染角色
-function renderRoleList(){
-const wrap = el("#roleList");
-wrap.innerHTML = "";
-GAME_DATA.roles.forEach(r=>{
-const div = document.createElement("div");
-div.className = "private-card";
-div.innerHTML = `<b>${r.name}</b><p>${r.desc}</p><button onclick="pickRole('${r.id}')">选择角色</button>`;
-wrap.appendChild(div);
-})
-}
-window.pickRole = (rid)=>{
-const r = GAME_DATA.roles.find(x=>x.id===rid);
-GAME_DATA.currentRole = r;
-el("#myScript").innerText = r.script;
-renderClue();
-}
-
-//渲染线索
-function renderClue(){
-const s = GAME_DATA.currentStage;
-el("#ev-stage1").innerHTML = GAME_DATA.stageClues[1].map(i=>`<div class="evidence">${i.name}：${i.content}</div>`).join("");
-
-if(s>=2){el("#stage2-box").classList.remove("lock-area");el("#stage2-box").style.display="block";}
-else {el("#stage2-box").classList.add("lock-area");el("#stage2-box").style.display="none";}
-let st2Html = "<div>二层公共线索</div>";
-GAME_DATA.stageClues[2].public.forEach(i=>st2Html += `<div class="evidence">${i.name}：${i.content}</div>`);
-if(GAME_DATA.currentRole){
-const myPri = GAME_DATA.stageClues[2].private[GAME_DATA.currentRole.id];
-st2Html += `<div class="private-card">你的专属：${myPri.name}｜${myPri.content}</div>`;
-}
-el("#ev-stage2").innerHTML = st2Html;
-
-if(s>=3){el("#stage3-box").classList.remove("lock-area");el("#stage3-box").style.display="block";}
-else {el("#stage3-box").classList.add("lock-area");el("#stage3-box").innerHTML = "";}
-
-if(s>=4){el("#vote-lock").classList.add("hidden");el("#voteBox").classList.remove("hidden");}
-else {el("#vote-lock").classList.remove("hidden");el("#voteBox").classList.add("hidden");}
-el("#nowStage").innerText = `阶段${s}`;
-}
-
-//复盘解锁
-function unlockTruth(){
-if(el("#truthPwd").value.trim()==="wuyun1914"){
-el("#truthLockBlock").classList.add("hidden");
-el("#truthBox").classList.remove("hidden");
-el("#truthBox").innerText = GAME_DATA.fullTruth;
-}else alert("密码错误");
-}
-
-//标签切换
-function bindTabSwitch(){
-document.querySelectorAll(".tab-btn").forEach(btn=>{
-btn.onclick = ()=>{
-document.querySelectorAll(".content-tab").forEach(t=>t.classList.remove("show"));
-el(`#tab-${btn.dataset.tab}`).classList.add("show");
-}
-})
-}
+document.getElementById("roleSelect").addEventListener("change",renderAll);
+renderAll();
 </script>
 </body>
 </html>
