@@ -2,274 +2,1114 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>剧本｜itty-sockets联机版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>雾起云浮 · 豪门惊情</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        * {margin:0;padding:0;box-sizing:border-box;}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700&display=swap');
+        :root {
+            --bg: #1a1410;
+            --paper: #d4c5a0;
+            --paper-dark: #b8a88a;
+            --ink: #2c1f14;
+            --shadow: rgba(0,0,0,0.7);
+            --red: #8b2a2a;
+            --gold: #b8860b;
+            --text-light: #f0e6d3;
+            --text-dim: #a0907a;
+            --border: #5a4a3a;
+        }
         body {
-            background:#171721;
-            color:#e6e6f2;
-            padding:24px;
-            font-family:system-ui, sans-serif;
-            max-width:1100px;
-            margin:0 auto;
-            line-height:1.7;
+            background: var(--bg);
+            color: var(--text-light);
+            font-family: 'Noto Serif SC', 'SimSun', serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+            margin: 0;
+            background-image: radial-gradient(ellipse at center, #2a1f18 0%, #0d0a08 100%);
+            background-attachment: fixed;
         }
-        .container{
-            display:grid;
-            grid-template-columns: 1fr 1fr;
-            gap:24px;
+        #app {
+            width: 100%;
+            max-width: 1200px;
+            min-height: 90vh;
+            background: var(--paper);
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><path d="M0 0h200v200H0z" fill="none"/><path d="M10 10h180v180H10z" fill="none" stroke="%23b8a88a" stroke-width="0.5"/><circle cx="100" cy="100" r="80" fill="none" stroke="%23b8a88a" stroke-width="0.3"/><circle cx="100" cy="100" r="60" fill="none" stroke="%23b8a88a" stroke-width="0.3"/><circle cx="100" cy="100" r="40" fill="none" stroke="%23b8a88a" stroke-width="0.3"/></svg>');
+            background-size: 300px 300px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9), inset 0 0 100px rgba(0,0,0,0.3);
+            padding: 20px;
+            position: relative;
+            color: var(--ink);
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #6a5a4a;
         }
-        @media(max-width:768px){
-            .container{grid-template-columns:1fr;}
+        #app::before {
+            content: '';
+            position: absolute;
+            top:0; left:0; right:0; bottom:0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M20 20 L80 20 L80 80 L20 80 Z" fill="none" stroke="%238a7a6a" stroke-width="0.5"/></svg>');
+            background-size: 80px 80px;
+            opacity: 0.05;
+            pointer-events: none;
+            border-radius: 16px;
         }
-        .story-box{
-            background:#1f1f30;
-            padding:20px;
-            border-radius:10px;
-            border:1px solid #383855;
+        .screen { display: none; flex-direction: column; flex:1; position:relative; z-index:1; padding:4px; }
+        .screen.active { display: flex; }
+        ::-webkit-scrollbar { width:6px; background:var(--paper-dark); }
+        ::-webkit-scrollbar-thumb { background:var(--red); border-radius:4px; }
+
+        h1 { font-family: 'Ma Shan Zheng', serif; font-size:2.8rem; text-align:center; border-bottom:2px solid var(--border); padding-bottom:12px; margin-bottom:16px; color:var(--ink); text-shadow:2px 2px 4px rgba(0,0,0,0.2); }
+        h2 { font-size:1.8rem; color:var(--red); border-left:4px solid var(--red); padding-left:16px; margin:12px 0; }
+        .chinese-title { font-family:'Ma Shan Zheng',serif; font-size:2.4rem; text-align:center; color:var(--red); letter-spacing:12px; }
+        .subtitle { text-align:center; color:var(--text-dim); font-size:0.9rem; letter-spacing:2px; margin:-8px 0 16px 0; border-bottom:1px solid var(--border); padding-bottom:10px; }
+
+        .btn {
+            display:inline-block; padding:10px 28px; background:var(--ink); color:var(--paper);
+            border:none; border-radius:6px; font-family:'Noto Serif SC',serif; font-size:1rem;
+            cursor:pointer; transition:all 0.3s; letter-spacing:2px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.3);
         }
-        .story-content{
-            min-height:220px;
-            margin:16px 0;
-            white-space:pre-wrap;
+        .btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.5); background:#3a2a1a; }
+        .btn:active { transform:translateY(0); }
+        .btn-primary { background:var(--red); color:#f0e6d3; }
+        .btn-primary:hover { background:#6a1a1a; }
+        .btn-gold { background:var(--gold); color:#1a1410; }
+        .btn-gold:hover { background:#d4a020; }
+        .btn-sm { padding:6px 16px; font-size:0.85rem; }
+        .btn-outline { background:transparent; border:2px solid var(--border); color:var(--ink); box-shadow:none; }
+        .btn-outline:hover { background:var(--ink); color:var(--paper); }
+        .btn:disabled { opacity:0.5; cursor:not-allowed; transform:none !important; }
+
+        .card { background:rgba(212,197,160,0.6); backdrop-filter:blur(2px); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin:8px 0; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+        .card-dark { background:rgba(26,20,16,0.85); color:var(--text-light); border-color:#5a4a3a; }
+
+        .flex-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+        .flex-col { display:flex; flex-direction:column; gap:10px; }
+        .flex-center { display:flex; justify-content:center; align-items:center; }
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .gap-sm { gap:6px; }
+        .mt-8 { margin-top:8px; }
+        .mt-16 { margin-top:16px; }
+        .mb-8 { margin-bottom:8px; }
+        .text-center { text-align:center; }
+        .text-dim { color:var(--text-dim); }
+        .text-red { color:var(--red); }
+        .text-gold { color:var(--gold); }
+        .text-sm { font-size:0.85rem; }
+        .text-xs { font-size:0.75rem; }
+        .w-full { width:100%; }
+        .border-bottom { border-bottom:1px solid var(--border); padding-bottom:8px; }
+
+        .scroll-area { max-height:60vh; overflow-y:auto; padding-right:6px; scroll-behavior:smooth; }
+
+        .role-card {
+            background:rgba(212,197,160,0.5); border:2px solid var(--border); border-radius:10px;
+            padding:14px 16px; cursor:pointer; transition:all 0.3s; text-align:center;
         }
-        .panel-box{
-            background:#1f1f30;
-            padding:20px;
-            border-radius:10px;
-            border:1px solid #383855;
+        .role-card:hover { transform:translateY(-3px); border-color:var(--gold); box-shadow:0 6px 20px rgba(0,0,0,0.2); }
+        .role-card.selected { border-color:var(--red); background:rgba(139,42,42,0.15); box-shadow:0 0 0 3px rgba(139,42,42,0.2); }
+        .role-card.taken { opacity:0.4; cursor:not-allowed; filter:grayscale(0.6); }
+        .role-card .role-icon { font-size:2.2rem; margin-bottom:4px; }
+        .role-card .role-name { font-weight:700; font-size:1.1rem; color:var(--ink); }
+        .role-card .role-desc { font-size:0.8rem; color:var(--text-dim); }
+
+        .chat-log {
+            background:rgba(26,20,16,0.1); border-radius:8px; padding:12px;
+            min-height:120px; max-height:300px; overflow-y:auto; border:1px solid var(--border);
+            font-size:0.9rem; line-height:1.7;
         }
-        .toolbar{
-            margin-bottom:16px;
-            display:flex;
-            gap:10px;
-            flex-wrap:wrap;
-            align-items:center;
+        .chat-log .msg { padding:2px 0; border-bottom:1px solid rgba(0,0,0,0.05); }
+        .chat-log .msg .who { font-weight:700; color:var(--red); }
+        .chat-log .msg .who.ai { color:var(--gold); }
+        .chat-log .msg .who.system { color:var(--text-dim); font-style:italic; }
+
+        .chat-input-row { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+        .chat-input-row input { flex:1; padding:8px 14px; border:1px solid var(--border); border-radius:6px; background:rgba(255,255,255,0.5); font-family:'Noto Serif SC',serif; font-size:0.95rem; color:var(--ink); outline:none; min-width:120px; }
+        .chat-input-row input:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(184,134,11,0.2); }
+
+        .clue-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:10px; }
+        .clue-card { background:rgba(212,197,160,0.4); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:0.85rem; position:relative; }
+        .clue-card .clue-label { font-weight:700; color:var(--red); font-size:0.75rem; letter-spacing:1px; }
+        .clue-card .clue-title { font-weight:700; margin:2px 0; }
+        .clue-card .clue-body { font-size:0.8rem; color:#3a2a1a; max-height:60px; overflow:hidden; text-overflow:ellipsis; }
+        .clue-card .badge { position:absolute; top:4px; right:4px; background:var(--red); color:#fff; font-size:0.6rem; padding:1px 6px; border-radius:10px; }
+
+        .progress-steps { display:flex; gap:4px; justify-content:center; margin:8px 0 16px 0; flex-wrap:wrap; }
+        .progress-steps .step { padding:4px 14px; border-radius:20px; font-size:0.75rem; background:var(--border); color:var(--text-dim); transition:all 0.3s; border:1px solid transparent; }
+        .progress-steps .step.active { background:var(--red); color:#fff; border-color:var(--gold); }
+        .progress-steps .step.done { background:#2a5a2a; color:#d0d0d0; }
+
+        .status-badge { display:inline-block; padding:2px 12px; border-radius:12px; font-size:0.75rem; background:var(--border); color:var(--paper); }
+        .status-badge.active { background:var(--red); color:#fff; }
+
+        .private-script { background:rgba(26,20,16,0.05); border-radius:8px; padding:14px 16px; border-left:4px solid var(--red); font-size:0.92rem; line-height:1.8; max-height:400px; overflow-y:auto; white-space:pre-wrap; }
+        .private-script .script-title { font-weight:700; color:var(--red); font-size:1.1rem; }
+
+        .vote-option { padding:10px 16px; border:2px solid var(--border); border-radius:8px; cursor:pointer; transition:all 0.2s; background:rgba(212,197,160,0.3); display:flex; justify-content:space-between; align-items:center; }
+        .vote-option:hover { border-color:var(--gold); background:rgba(212,197,160,0.6); }
+        .vote-option.selected { border-color:var(--red); background:rgba(139,42,42,0.15); }
+        .vote-option .votes { background:var(--ink); color:var(--paper); padding:2px 12px; border-radius:20px; font-size:0.8rem; }
+
+        .modal-overlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);
+            display:none; justify-content:center; align-items:center; z-index:999; padding:20px;
         }
-        select,button,input{
-            padding:7px 12px;
-            font-size:14px;
-            border:none;
-            border-radius:4px;
+        .modal-overlay.show { display:flex; }
+        .modal-box {
+            background:var(--paper); color:var(--ink); max-width:600px; width:100%;
+            max-height:85vh; border-radius:12px; padding:24px 28px; overflow-y:auto;
+            box-shadow:0 20px 60px rgba(0,0,0,0.8); border:2px solid #6a5a4a; position:relative;
         }
-        button{cursor:pointer;}
-        .host-panel{
-            background:#222233;
-            padding:14px;
-            border-radius:6px;
-            margin-bottom:20px;
+        .modal-box h2 { margin-top:0; }
+        .modal-close { position:sticky; top:0; float:right; background:var(--red); color:#fff; border:none; border-radius:50%; width:32px; height:32px; font-size:1.2rem; cursor:pointer; z-index:10; }
+
+        .tag { display:inline-block; background:var(--red); color:#fff; padding:1px 10px; border-radius:12px; font-size:0.7rem; letter-spacing:1px; margin-right:4px; }
+        .tag-gold { background:var(--gold); color:#1a1410; }
+
+        .divider { border:none; border-top:2px solid var(--border); margin:12px 0; opacity:0.4; }
+
+        /* 房间号显示 */
+        .room-display { background:var(--ink); color:var(--gold); padding:8px 20px; border-radius:8px; font-size:1.4rem; letter-spacing:6px; font-family:'Ma Shan Zheng',serif; display:inline-block; }
+
+        @media (max-width:768px) {
+            #app { padding:12px; border-radius:10px; min-height:95vh; }
+            h1 { font-size:1.8rem; }
+            .chinese-title { font-size:1.6rem; letter-spacing:6px; }
+            .grid-2 { grid-template-columns:1fr; }
+            .role-card .role-icon { font-size:1.6rem; }
+            .modal-box { padding:16px; max-height:90vh; }
+            .clue-grid { grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); }
+            .private-script { font-size:0.85rem; padding:10px 12px; }
+            .chat-input-row { flex-direction:column; }
+            .chat-input-row input { width:100%; }
         }
-        .host-item{
-            padding:10px 0;
-            border-bottom:1px solid #333348;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            flex-wrap:wrap;
-            gap:8px;
+        @media (max-width:480px) {
+            .grid-2 { grid-template-columns:1fr; }
+            .flex-row { flex-direction:column; align-items:stretch; }
+            .btn { padding:8px 18px; font-size:0.9rem; }
         }
-        .host-clue-title{
-            color:#ddddff;
-            font-weight:500;
-        }
-        .host-mask-text{
-            color:#777;
-            font-style:italic;
-        }
-        .clue-item,.memory-item{
-            background:#212132;
-            padding:12px 14px;
-            border-radius:6px;
-            margin:8px 0;
-        }
-        .memory-item{
-            background:#272038;
-            border-left:3px solid #9468c2;
-        }
-        .tag{
-            font-size:12px;
-            padding:2px 6px;
-            border-radius:3px;
-            margin-right:6px;
-        }
-        .tag-clue{background:#284270;}
-        .tag-memory{background:#542f74;}
-        .tag-unlock{background:#246338;}
-        .tag-lock{background:#603030;}
-        .status-bar{margin:8px 0;color:#ccc;}
+
+        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .fade-in { animation:fadeIn 0.6s ease-out; }
+        .ambient-glow { position:relative; }
+        .ambient-glow::after { content:''; position:absolute; top:-20%; left:-20%; right:-20%; bottom:-20%; background:radial-gradient(ellipse at center, rgba(139,42,42,0.05), transparent 70%); pointer-events:none; z-index:0; }
+        .hide-scrollbar::-webkit-scrollbar { width:4px; }
+        .hide-scrollbar { scrollbar-width:thin; }
     </style>
 </head>
 <body>
-<div class="toolbar">
-    <span>房间ID:</span>
-    <input id="roomIdInput" value="my-script-room-001">
-    <button onclick="connectRoom()">连接房间</button>
-    <span>身份：</span>
-    <select id="roleSelect">
-        <option value="host">👑房主主持人</option>
-        <option value="p1">👤玩家P1</option>
-        <option value="p2">👤玩家P2</option>
-        <option value="p3">👤玩家P3</option>
-    </select>
-    <span>环节：<b id="stageText">1</b></span>
-    <button onclick="nextStage()">下一环节(仅房主)</button>
-</div>
-<div class="status-bar" id="connStatus">未连接房间</div>
+<div id="app">
 
-<div class="container">
-    <div class="story-box">
-        <h3>📖 当前剧本剧情</h3>
-        <div class="story-content" id="storyText"></div>
+    <!-- ===== 屏幕：连接/房间 ===== -->
+    <div id="screen-connect" class="screen active">
+        <div class="flex-center" style="flex:1;flex-direction:column;justify-content:center;text-align:center;padding:20px 10px;">
+            <div style="font-size:4rem;color:var(--red);opacity:0.6;font-family:'Ma Shan Zheng',serif;letter-spacing:16px;">雾起云浮</div>
+            <div style="font-size:1.2rem;color:var(--text-dim);letter-spacing:6px;margin:4px 0 20px 0;">—— 豪门惊情系列 ——</div>
+            <div style="max-width:450px;margin:0 auto;padding:20px;background:rgba(26,20,16,0.3);border-radius:12px;border:1px solid var(--border);width:100%;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;flex-direction:column;gap:4px;text-align:left;">
+                        <label style="font-size:0.85rem;color:var(--text-dim);">你的名字</label>
+                        <input id="player-name-input" type="text" value="玩家" style="padding:10px 14px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5);font-family:'Noto Serif SC',serif;font-size:1rem;color:var(--ink);outline:none;">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;text-align:left;">
+                        <label style="font-size:0.85rem;color:var(--text-dim);">房间号（加入时填写）</label>
+                        <input id="room-id-input" type="text" placeholder="例如: ABCD12" style="padding:10px 14px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.5);font-family:'Noto Serif SC',serif;font-size:1rem;color:var(--ink);outline:none;text-transform:uppercase;letter-spacing:2px;">
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
+                        <button class="btn btn-primary" onclick="createRoom()">🏠 创建房间</button>
+                        <button class="btn btn-outline" onclick="joinRoom()">🚪 加入房间</button>
+                    </div>
+                    <div id="connect-status" style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;"></div>
+                    <div id="room-display-area" style="margin-top:8px;"></div>
+                </div>
+            </div>
+            <div style="margin-top:16px;font-size:0.7rem;color:var(--text-dim);letter-spacing:1px;">
+                创建房间获得6位房间号 · 朋友输入相同房间号加入
+            </div>
+        </div>
     </div>
 
-    <div class="panel-box">
-        <div id="hostView" class="host-panel" style="display:none;">
-            <h4>房主管理面板（仅看线索标题，看不到正文）</h4>
-            <div id="hostList"></div>
+    <!-- ===== 屏幕：角色选择 ===== -->
+    <div id="screen-role" class="screen">
+        <h1>🕯️ 选择角色</h1>
+        <p class="subtitle" id="role-subtitle">选择你要扮演的角色 · 等待所有人就绪</p>
+        <div id="room-info-bar" style="text-align:center;margin-bottom:8px;font-size:0.9rem;color:var(--text-dim);"></div>
+        <div id="role-grid" class="grid-2" style="margin-top:8px;"></div>
+        <div style="margin-top:16px;text-align:center;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+            <button class="btn btn-primary" id="btn-ready" onclick="setReady()">✅ 确认选择</button>
+            <button class="btn btn-gold" id="btn-start-game" onclick="startGame()" disabled>▶ 开始游戏（仅房主）</button>
+            <button class="btn btn-outline btn-sm" onclick="leaveRoom()">🚪 离开房间</button>
         </div>
+        <div style="margin-top:8px;text-align:center;font-size:0.75rem;color:var(--text-dim);" id="role-status">等待选择...</div>
+    </div>
 
-        <h3>📜我的线索</h3>
-        <div id="myClues"></div>
-        <h3>🗝️我的记忆碎片</h3>
-        <div id="myMemory"></div>
+    <!-- ===== 屏幕：游戏主界面 ===== -->
+    <div id="screen-game" class="screen">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:8px;">
+            <div>
+                <span style="font-family:'Ma Shan Zheng',serif;font-size:1.4rem;color:var(--red);letter-spacing:4px;">雾起云浮</span>
+                <span class="status-badge" id="phase-badge" style="margin-left:10px;">寒暄</span>
+                <span id="room-badge" style="margin-left:8px;font-size:0.7rem;color:var(--text-dim);"></span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <span class="text-dim text-sm" id="game-time">⏳ 第一幕</span>
+                <button class="btn btn-sm btn-outline" onclick="showMyScript()">📖 剧本</button>
+                <button class="btn btn-sm btn-outline" onclick="showClues()">🔍 线索</button>
+            </div>
+        </div>
+        <div class="progress-steps" id="progress-steps">
+            <span class="step active" data-step="0">寒暄</span>
+            <span class="step" data-step="1">二层</span>
+            <span class="step" data-step="2">真凶</span>
+            <span class="step" data-step="3">投票</span>
+            <span class="step" data-step="4">复盘</span>
+        </div>
+        <div style="display:flex;flex:1;gap:12px;min-height:0;flex-wrap:wrap;">
+            <div style="flex:2;min-width:240px;display:flex;flex-direction:column;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+                    <span style="font-weight:700;font-size:0.9rem;">📜 公聊</span>
+                    <span class="text-xs text-dim" id="chat-timer"></span>
+                </div>
+                <div class="chat-log" id="chat-log"></div>
+                <div class="chat-input-row">
+                    <input type="text" id="chat-input" placeholder="输入你的话语..." onkeydown="if(event.key==='Enter') sendChat()">
+                    <button class="btn btn-sm" onclick="sendChat()">发送</button>
+                    <button class="btn btn-sm btn-outline" onclick="triggerMemory()">🧠 记忆</button>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                    <button class="btn btn-sm btn-outline" onclick="doInvestigate()">🔎 调查</button>
+                    <button class="btn btn-sm btn-outline" onclick="nextPhase()">▶ 推进</button>
+                    <button class="btn btn-sm btn-gold" onclick="startVote()">🗳️ 投票</button>
+                </div>
+            </div>
+            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px;">
+                <div class="card" style="padding:10px 14px;">
+                    <div style="font-weight:700;font-size:0.85rem;">👤 我的角色</div>
+                    <div id="my-role-display" style="font-size:0.9rem;">未选择</div>
+                    <div id="my-role-status" style="font-size:0.75rem;color:var(--text-dim);"></div>
+                </div>
+                <div class="card" style="padding:10px 14px;flex:1;">
+                    <div style="font-weight:700;font-size:0.85rem;">📌 当前线索</div>
+                    <div id="clue-summary" style="font-size:0.8rem;color:var(--text-dim);">暂无公开线索</div>
+                    <div style="margin-top:4px;font-size:0.7rem;color:var(--text-dim);" id="clue-count">已获取: 0</div>
+                </div>
+                <div class="card" style="padding:8px 12px;background:rgba(139,42,42,0.08);">
+                    <div style="font-size:0.75rem;color:var(--text-dim);">⚡ AI主持</div>
+                    <div id="ai-hint" style="font-size:0.8rem;font-style:italic;">等待游戏开始...</div>
+                </div>
+                <div id="player-list" style="font-size:0.75rem;color:var(--text-dim);max-height:100px;overflow-y:auto;"></div>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">
+            <button class="btn btn-sm btn-outline" onclick="leaveRoom()" style="color:var(--red);">🚪 退出房间</button>
+        </div>
+    </div>
+
+    <!-- ===== 模态框：剧本 ===== -->
+    <div class="modal-overlay" id="modal-script">
+        <div class="modal-box"><button class="modal-close" onclick="closeModal('modal-script')">✕</button>
+            <h2 id="modal-script-title">📖 剧本</h2>
+            <div class="private-script" id="modal-script-body"></div>
+            <div style="margin-top:12px;text-align:right;"><button class="btn btn-sm" onclick="closeModal('modal-script')">关闭</button></div>
+        </div>
+    </div>
+
+    <!-- ===== 模态框：线索 ===== -->
+    <div class="modal-overlay" id="modal-clues">
+        <div class="modal-box" style="max-width:700px;"><button class="modal-close" onclick="closeModal('modal-clues')">✕</button>
+            <h2>🔍 线索总览</h2>
+            <div id="clue-list-modal" style="max-height:400px;overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- ===== 模态框：投票 ===== -->
+    <div class="modal-overlay" id="modal-vote">
+        <div class="modal-box" style="max-width:500px;"><button class="modal-close" onclick="closeModal('modal-vote')">✕</button>
+            <h2>🗳️ 匿名投票</h2>
+            <p class="text-dim text-sm">投出你认为的真凶 · 每人一票</p>
+            <div id="vote-options" style="margin:12px 0;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn btn-sm btn-outline" onclick="closeModal('modal-vote')">取消</button>
+                <button class="btn btn-sm btn-primary" onclick="submitVote()">提交投票</button>
+            </div>
+            <div id="vote-result" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <!-- ===== 模态框：记忆 ===== -->
+    <div class="modal-overlay" id="modal-memory">
+        <div class="modal-box"><button class="modal-close" onclick="closeModal('modal-memory')">✕</button>
+            <h2>🧠 记忆片段</h2>
+            <div id="memory-body" class="private-script"></div>
+        </div>
+    </div>
+
+    <!-- ===== 模态框：复盘 ===== -->
+    <div class="modal-overlay" id="modal-recap">
+        <div class="modal-box" style="max-width:700px;max-height:90vh;"><button class="modal-close" onclick="closeModal('modal-recap')">✕</button>
+            <h2>📜 真相复盘</h2>
+            <div id="recap-body" style="max-height:500px;overflow-y:auto;font-size:0.9rem;line-height:1.8;"></div>
+        </div>
+    </div>
+
+    <!-- ===== 模态框：错误 ===== -->
+    <div class="modal-overlay" id="modal-error">
+        <div class="modal-box" style="max-width:400px;"><button class="modal-close" onclick="closeModal('modal-error')">✕</button>
+            <h2 style="color:var(--red);">⚠️ 提示</h2>
+            <div id="error-body" style="font-size:1rem;padding:12px 0;"></div>
+            <div style="text-align:right;"><button class="btn btn-sm" onclick="closeModal('modal-error')">确定</button></div>
+        </div>
     </div>
 </div>
 
 <script>
-// itty‑sockets 客户端
-let connect=(e,s={})=>{let t,n=[],o=[],a=0,r=()=>{t||(t=new WebSocket(`wss://ittysockets.io/r/${e??""}?${new URLSearchParams(s)}`),t.onopen=()=>{for(;n.length;)t?.send(n.shift());a&&t?.close()},t.onmessage=(e,s=JSON.parse(e.data))=>{for(let cb of o)cb({...s,date:new Date(s.date)})},t.onclose=()=>(a=0,t=null))};return new Proxy(r,{get:(obj,prop)=>{
-    if(prop==="ws") return t;
-    if(prop==="send") return (payload,type="message")=>{t?t.send(JSON.stringify({type,payload})):n.push({payload,type})};
-    if(prop==="on") return (wantType,callback)=>{o.push((evt)=>{if(evt.type===wantType) callback(evt);})};
-    if(prop==="close") return ()=>{a=1;if(t)t.close();};
-}})}
+// ============================================================
+//  雾起云浮 · 联机版 前端逻辑
+//  配合 server.js 使用
+// ============================================================
 
-// =========剧本配置=========
-const storyStages = [
-    {stage:1,text:`【第一幕：雨夜案发】
-暴雨夜晚，别墅内传来一声惨叫。
-众人赶到房间，发现出事了。
-大家开始互相问话。`},
-    {stage:2,text:`【第二幕：线索浮现】
-现场开始搜查物证。部分角色获得专属线索。`},
-    {stage:3,text:`【第三幕：回忆涌现】
-过往记忆开始浮现，真相慢慢靠近。`}
-]
-const baseClueData = [
-    {id:1,title:"撕碎的便签",type:"clue",content:"今晚零点老地方见面，不要告诉任何人，纸条边缘沾有雨水。",targetRole:["p1"],isUnlocked:false,triggerStage:2},
-    {id:2,title:"雨夜记忆片段",type:"memory",content:"大雨，黑色雨伞，那个人的脸完全模糊，只记得低沉的说话声。",targetRole:["p2"],isUnlocked:false,triggerStage:0},
-    {id:3,title:"陌生通话记录",type:"clue",content:"23点12分，一通47秒陌生来电，号码无登记信息。",targetRole:["p1","p3"],isUnlocked:false,triggerStage:3}
-]
-
-let socket = null;
-let currentRole = "host";
-let roomState = {
-    currentStage:1,
-    clueData:JSON.parse(JSON.stringify(baseClueData))
+// ---------- 角色数据 ----------
+const ROLES = {
+    '柯太太': { id:'kott', name:'柯太太', icon:'👩', desc:'绷带女人 · 面容尽毁', gender:'女', age:'约40岁',
+        script:'你名叫【露曦】，曾是孤儿院出身的护工，嫁给柯卫廉后成为柯太太。一场大火毁去了你的容貌…',
+        memories:['圈阵','莫曦','Dr.Zebub','铁盒子'],
+        memoryTexts:{'圈阵':'云浮馆是天然聚阴气圈阵…','莫曦':'婚后去莫曦孤儿院捐款…','Dr.Zebub':'英吉利人西卜博士…','铁盒子':'铁盒内存放夫妻合照…'},
+        items:['打了结的纱布（一端灼烧）'],
+        goal:'找到要杀自己的真凶；找到自己的孩子' },
+    '柯少爷': { id:'kosn', name:'柯少爷', icon:'👨', desc:'年轻男子 · 柯家继承人', gender:'男', age:'约18岁',
+        script:'你全名【柯瞻】，是柯江元之子，被父亲告知将是柯家继承人…',
+        memories:['Dr.Zebub','记者','招魂术','殊途'],
+        memoryTexts:{'Dr.Zebub':'Dr.Zebub精通炼金术…','记者':'记者上门询问纱厂火灾…','招魂术':'招魂术无法成功…','殊途':'雾起云浮、鬼界、殊途…'},
+        items:['柯汉生死亡证明'],
+        goal:'找到心爱的她；确认是否有人已非活人' },
+    '云晴': { id:'yqng', name:'云晴', icon:'👩', desc:'女仆 · 黑发颤抖', gender:'女', age:'约22岁',
+        script:'你小名【叮儿】，幼年被母亲抛弃送入孤儿院，改名云晴…',
+        memories:['糖果屋','灰烬','银发洋人','勘德'],
+        memoryTexts:{'糖果屋':'护工Kind讲糖果屋故事…','灰烬':'二层失火逃生时看见小柯…','银发洋人':'银发洋人哄骗自己…','勘德':'好友勘德将求爱之事外传…'},
+        items:['《不死之灵》'],
+        goal:'找到柯老爷死亡真相；确认柯少爷是否是小柯' },
+    '零四': { id:'lingsi', name:'零四', icon:'👨', desc:'胡茬男人 · 条纹病服', gender:'男', age:'约24岁',
+        script:'你失忆了，只记得自己叫"零四"，穿着慈济堂的病号服…',
+        memories:['注射器','银发洋人','零四','卫廉'],
+        memoryTexts:{'注射器':'医生长期给柯家开安神药…','银发洋人':'银发洋人哄骗自己…','零四':'你叫"零四"…','卫廉':'你真正的名字是柯卫廉…'},
+        items:['旧银币','一团纱布'],
+        goal:'找到真实身份；隐瞒放火；找到她' },
+    '雾晓': { id:'wuxiao', name:'雾晓', icon:'👩', desc:'洋裙女子 · 眼眸深邃', gender:'女', age:'约18岁',
+        script:'你在莫曦孤儿院长大，被柯老板带来云浮馆…',
+        memories:['勘德','符咒','墓碑','祭祀台面'],
+        memoryTexts:{'勘德':'好友勘德将求亲之事外传…','符咒':'银发洋人诱拐独行女孩…','墓碑':'爱肉体还是灵魂…','祭祀台面':'镜子招魂术…'},
+        items:['旧钥匙','铁盒子'],
+        goal:'找到要杀自己的真凶；找到柯老板想让自己嫁的人' }
 };
 
-function connectRoom(){
-    const rid = document.getElementById("roomIdInput").value.trim();
-    if(!rid)return;
-    socket = connect(rid,{echo:true});
-    document.getElementById("connStatus").innerText = "正在连接…";
+// ---------- 线索数据 ----------
+const CLUES = {
+    'c1':{ id:'c1', area:'一层·厨房', title:'刻字厨刀', body:'灶台上有三把厨刀，刀柄分别刻着"壹""贰""叁"。废墟碎木下另有刻字厨刀"肆"。' },
+    'c2':{ id:'c2', area:'一层·厨房', title:'安神药瓶', body:'灶台药瓶，背面印"慈济安神"。副作用：神志迟钝，过量致死。' },
+    'c3':{ id:'c3', area:'一层·厨房', title:'旧报纸包裹蜡烛', body:'记载纱厂化学染料致员工送医，多年前仓库火灾烧死老板妻子。' },
+    'c4':{ id:'c4', area:'一层·仆人房', title:'管家备忘录', body:'墙上旧纸，文字模糊，含"火""防""墙""洋行"等字样。' },
+    'c5':{ id:'c5', area:'一层·书库', title:'《亡者面具》', body:'Dr.Zebub 1901年出版。记载各地亡者面具习俗，附操控弱小灵魂的英文秘咒。' },
+    'c6':{ id:'c6', area:'一层·书库', title:'炼金术书籍图案', body:'法术可突破生死规则，试炼素材含人、器官、灵魂。' },
+    'c7':{ id:'c7', area:'一层·餐厅', title:'油画《鸦与树》', body:'画面五只乌鸦，中西结合画法。' },
+    'c8':{ id:'c8', area:'一层·餐厅', title:'餐桌字条', body:'"云晴勿慌，才伯、阿旺、柯少爷等人一同离开。老爷吃过剩余糊汤粉。"' },
+    'c9':{ id:'c9', area:'一层·废墟', title:'地下入口铁门', body:'地面向下铁门，刻符号大锁，通往地下室。' },
+    'c10':{ id:'c10', area:'一层·废墟', title:'炼金素材桶', body:'封条标注"1904.10.8 西卜博士留"。桶内干透人体脏器肉块。' },
+    'c11':{ id:'c11', area:'一层·废墟', title:'碎镜子与木板', body:'烧毁房间圆桌碎镜。木板记录：卫廉、母亲、仓库、三十月检查一次。' },
+    'c12':{ id:'c12', area:'一层·废墟', title:'石刻墓碑', body:'开裂刻字大石，旁西洋时钟永久停在9:40。西南破损木门。' },
+    'c13':{ id:'c13', area:'一层·废墟', title:'划痕楼梯', body:'三层残楼梯，布满指甲抓挠痕迹。' },
+    'c14':{ id:'c14', area:'一层·废墟', title:'破损面具', body:'废墟中有长袍、面具，上半部破损带血迹。旁有刻字厨刀"肆"。' },
+    'l1':{ id:'l1', area:'二层·房间二', title:'女尸与铁盒', body:'全身缠绕发黄绷带、腹部凹陷女尸。旁铁盒内有碎镜子、绣Mercy衣物。' },
+    'l2':{ id:'l2', area:'二层·房间三', title:'男尸与残纸', body:'姿势扭曲、头部有伤男尸，手中攥半张残纸。地上散落绿色面具。' },
+    'l3':{ id:'l3', area:'二层·房间四', title:'女尸与勒痕', body:'白发女尸，颈间勒痕、全身旧烧伤。衣袋有慈济安神药瓶。' },
+    'l4':{ id:'l4', area:'二层·房间五', title:'圈阵男尸', body:'面部烧毁男尸，身下符咒圈阵、一圈燃尽蜡烛、特殊符号钥匙。' },
+    'l5':{ id:'l5', area:'二层·房间一', title:'首饰盒与相片', body:'烧毁首饰盒，残留旧相片。床下完好长袍、绿色面具。' },
+    'l6':{ id:'l6', area:'二层·走廊', title:'铜烛台', body:'带凹陷铜烛台，残留融化蜡迹。' },
+    'l7':{ id:'l7', area:'二层·房间六', title:'纱布与烛台', body:'铜烛台，半截熄灭蜡烛。散落纱布绷带。' },
+    'l8':{ id:'l8', area:'二层·房间七', title:'女包与注射器', body:'烧坏皮质女包（面纱）、多支注射器、烟熏药瓶。柜内绣Mercy旧衣物。' },
+    'l9':{ id:'l9', area:'二层·房间八', title:'保险柜', body:'火烧保险柜，内有烧毁残纸遗嘱、云浮馆房契、1904年购房合同。' },
+};
 
-    socket.on("open",()=>{
-        document.getElementById("connStatus").innerText = "✅房间已连接";
-        renderAll();
-    })
-    socket.on("close",()=>{
-        document.getElementById("connStatus").innerText = "❌房间断开";
-    })
-    socket.on("state-broadcast",(evt)=>{
-        roomState = evt.payload;
-        renderAll();
-    })
-}
+// ---------- 秘密线索 ----------
+const SECRET_CLUES = {
+    '01':{ id:'s1', title:'墓碑', body:'坟场挖出墓碑，刻字 WILLIAMS CLOUD 1881-1899' },
+    '02':{ id:'s2', title:'撕毁相片', body:'撕毁旧相片，女性面部被撕掉，背面有字迹' },
+    '03':{ id:'s3', title:'祭祀台面', body:'石质祭祀台面，大量融化蜡、黑褐色血迹' },
+    '04':{ id:'s4', title:'婚礼请柬', body:'"我就要和Hansen结婚了…我们都希望您作为父亲来参加婚礼。——Mercy"' },
+    '05':{ id:'s5', title:'求助信', body:'Williams写给Dr.Zebub的信，想和Lucy Mercy成婚' },
+    '06':{ id:'s6', title:'感谢卡', body:'雾晓手写感谢卡片，感谢柯老板资助孤儿院' },
+};
 
-function broadcastState(){
-    if(!socket || currentRole !== "host") return;
-    socket.send(roomState,"state-broadcast");
-}
+// ---------- 游戏状态 ----------
+let G = {
+    phase: 0,
+    players: {},        // { socketId: { name, roleId, isAI, isReady } }
+    mySocketId: null,
+    myRoleKey: null,
+    roomId: null,
+    isRoomCreator: false,
+    cluesFound: [],
+    votes: {},
+    started: false,
+    secondFloorUnlocked: false,
+    investigationCount: 0,
+    memoriesTriggered: {}, // { roleId: [memoryKey] }
+    chatLog: [],
+    myReady: false,
+    phaseNames: ['寒暄', '二层', '真凶', '投票', '复盘'],
+};
 
-function nextStage(){
-    if(currentRole !== "host") return;
-    roomState.currentStage +=1;
-    roomState.clueData.forEach(c=>{
-        if(c.triggerStage>0 && c.triggerStage === roomState.currentStage){
-            c.isUnlocked = true;
+let socket = null;
+let selectedRole = null;
+
+// ---------- 工具函数 ----------
+function $(id) { return document.getElementById(id); }
+function qsa(sel) { return document.querySelectorAll(sel); }
+function showScreen(id) { qsa('.screen').forEach(el=>el.classList.remove('active')); $(id).classList.add('active'); }
+function showModal(id) { $(id).classList.add('show'); }
+function closeModal(id) { $(id).classList.remove('show'); }
+
+// ---------- Socket 连接 ----------
+function connectSocket() {
+    socket = io();
+    socket.on('connect', () => {
+        G.mySocketId = socket.id;
+        console.log('✅ 已连接服务器');
+        $('connect-status').textContent = '✅ 已连接服务器';
+    });
+    socket.on('disconnect', () => {
+        $('connect-status').textContent = '❌ 连接断开，请刷新页面';
+    });
+
+    // ----- 房间事件 -----
+    socket.on('room-created', (data) => {
+        G.roomId = data.roomId;
+        G.isRoomCreator = true;
+        $('room-display-area').innerHTML = `
+            <div style="margin-top:8px;padding:12px;background:rgba(139,42,42,0.1);border-radius:8px;border:2px solid var(--gold);">
+                <div style="font-size:0.8rem;color:var(--text-dim);">📦 你的房间号</div>
+                <div class="room-display">${data.roomId}</div>
+                <div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px;">分享这个房间号给朋友，让他们加入</div>
+            </div>
+        `;
+        showScreen('screen-role');
+        renderRoles();
+        $('role-subtitle').textContent = '选择你的角色 · 你是房主';
+        $('room-info-bar').textContent = `🏠 房间 ${data.roomId} · 等待玩家加入...`;
+        addSystemMessage(`🏠 房间 ${data.roomId} 创建成功，分享给朋友加入`);
+    });
+
+    socket.on('room-state', (state) => {
+        if (!state) return;
+        G.players = state.players || {};
+        G.phase = state.phase || 0;
+        G.cluesFound = state.cluesFound || [];
+        G.votes = state.votes || {};
+        G.started = state.started || false;
+        G.secondFloorUnlocked = state.secondFloorUnlocked || false;
+        G.investigationCount = state.investigationCount || 0;
+        G.memoriesTriggered = state.memoriesTriggered || {};
+        if (state.chatLog) G.chatLog = state.chatLog;
+        updateUI();
+        renderChatLog();
+        renderPlayerList();
+        if (G.started) {
+            showScreen('screen-game');
+        } else {
+            showScreen('screen-role');
+            renderRoles();
         }
-    })
-    broadcastState();
-}
+        // 更新角色选择状态
+        if (G.mySocketId && G.players[G.mySocketId]) {
+            G.myRoleKey = G.players[G.mySocketId].roleId;
+            G.myReady = G.players[G.mySocketId].isReady || false;
+            selectedRole = G.myRoleKey;
+        }
+        // 更新角色选择UI
+        updateRoleUI();
+        // 检查开始按钮
+        updateStartButton();
+    });
 
-function hostUnlockClue(clueId){
-    if(currentRole !== "host") return;
-    const item = roomState.clueData.find(x=>x.id === clueId);
-    if(item){
-        item.isUnlocked = true;
-        broadcastState();
-    }
-}
+    socket.on('chat-message', (data) => {
+        addChatMessage(data.who, data.text);
+    });
 
-function renderAll(){
-    currentRole = document.getElementById("roleSelect").value;
-    document.getElementById("stageText").innerText = roomState.currentStage;
+    socket.on('clue-found', (data) => {
+        if (!G.cluesFound.includes(data.clueId)) {
+            G.cluesFound.push(data.clueId);
+        }
+        updateUI();
+    });
 
-    const stageItem = storyStages.find(s=>s.stage === roomState.currentStage);
-    document.getElementById("storyText").innerText = stageItem ? stageItem.text : "剧情结束";
+    socket.on('vote-update', (votes) => {
+        G.votes = votes;
+        updateUI();
+    });
 
-    const hostViewDom = document.getElementById("hostView");
-    const hostListDom = document.getElementById("hostList");
-    const myCluesDom = document.getElementById("myClues");
-    const myMemoryDom = document.getElementById("myMemory");
-    myCluesDom.innerHTML="";myMemoryDom.innerHTML="";hostListDom.innerHTML="";
+    socket.on('phase-change', (phase) => {
+        G.phase = phase;
+        updateUI();
+        const names = ['寒暄', '二层', '真凶', '投票'];
+        addSystemMessage(`📌 进入第 ${phase+1} 幕：${names[phase] || '未知'}`);
+    });
 
-    if(currentRole === "host"){
-        hostViewDom.style.display = "block";
-        roomState.clueData.forEach(c=>{
-            const div = document.createElement("div");
-            div.className = "host-item";
-            const statusTag = c.isUnlocked
-                ? `<span class="tag tag-unlock">已开放</span>`
-                : `<span class="tag tag-lock">未开放</span>`;
-            div.innerHTML = `
-                <div>
-                    <span class="host-clue-title">${c.title}</span>
-                    ${statusTag}
-                    <span class="tag ${c.type==='clue'?'tag-clue':'tag-memory'}">${c.type==='clue'?'线索':'记忆'}</span>
-                    <span>分配：${c.targetRole.join(",")}</span>
-                    <span class="host-mask-text">【内容对房主隐藏】</span>
-                    ${c.triggerStage>0 ? `<span>自动环节:${c.triggerStage}</span>`:""}
-                </div>
-                <div>
-                    ${!c.isUnlocked ? `<button onclick="hostUnlockClue(${c.id})">开放线索</button>`:""}
-                </div>
+    socket.on('memory-triggered', (data) => {
+        if (data.playerId === G.mySocketId) {
+            // 显示记忆给本人
+            $('memory-body').innerHTML = `
+                <div style="font-weight:700;color:var(--red);">${data.memoryKey}</div>
+                <div style="margin-top:8px;">${data.memoryText}</div>
+                <div style="margin-top:8px;font-size:0.75rem;color:var(--text-dim);">—— 你回忆起了一段被遗忘的往事</div>
             `;
-            hostListDom.appendChild(div);
-        })
-    }else{
-        hostViewDom.style.display = "none";
-        roomState.clueData.forEach(c=>{
-            if(c.targetRole.includes(currentRole) && c.isUnlocked){
-                if(c.type==="clue"){
-                    let d=document.createElement("div");
-                    d.className="clue-item";
-                    d.innerHTML=`<b>${c.title}</b><br>${c.content}`;
-                    myCluesDom.appendChild(d);
-                }else{
-                    let d=document.createElement("div");
-                    d.className="memory-item";
-                    d.innerHTML=`<b>${c.title}</b><br>${c.content}`;
-                    myMemoryDom.appendChild(d);
-                }
-            }
-        })
+            showModal('modal-memory');
+        }
+    });
+
+    socket.on('game-started', () => {
+        G.started = true;
+        showScreen('screen-game');
+        addSystemMessage('🕯️ 游戏开始！请阅读剧本，然后开始寒暄。');
+        updateUI();
+    });
+
+    socket.on('error-message', (data) => {
+        $('error-body').textContent = data.text;
+        showModal('modal-error');
+    });
+
+    socket.on('reconnect', () => {
+        if (G.roomId) {
+            socket.emit('request-state', G.roomId);
+        }
+    });
+}
+
+// ---------- 房间操作 ----------
+function createRoom() {
+    const name = $('player-name-input').value.trim() || '玩家';
+    connectSocket();
+    setTimeout(() => {
+        socket.emit('create-room', { playerName: name, roleId: null });
+    }, 200);
+}
+
+function joinRoom() {
+    const name = $('player-name-input').value.trim() || '玩家';
+    const roomId = $('room-id-input').value.trim().toUpperCase();
+    if (!roomId) { alert('请输入房间号'); return; }
+    connectSocket();
+    setTimeout(() => {
+        socket.emit('join-room', { roomId, playerName: name, roleId: null });
+    }, 200);
+}
+
+function leaveRoom() {
+    if (confirm('确定要离开房间吗？')) {
+        if (G.roomId) {
+            // 刷新页面回到连接页
+            location.reload();
+        }
     }
 }
 
-document.getElementById("roleSelect").addEventListener("change",renderAll);
-renderAll();
+// ---------- 角色选择 ----------
+function renderRoles() {
+    const grid = $('role-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const takenRoles = Object.values(G.players).map(p => p.roleId).filter(Boolean);
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    
+    Object.keys(ROLES).forEach(key => {
+        const r = ROLES[key];
+        const isTaken = takenRoles.includes(key) && (myData?.roleId !== key);
+        const isSelected = myData?.roleId === key;
+        const div = document.createElement('div');
+        div.className = 'role-card' + (isSelected ? ' selected' : '') + (isTaken ? ' taken' : '');
+        div.innerHTML = `
+            <div class="role-icon">${r.icon}</div>
+            <div class="role-name">${r.name}</div>
+            <div class="role-desc">${r.desc}</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);">${r.gender} · ${r.age}</div>
+            ${isTaken ? '<div style="font-size:0.6rem;color:var(--red);">已选</div>' : ''}
+            ${isSelected ? '<div style="font-size:0.6rem;color:var(--gold);">✓ 已选</div>' : ''}
+        `;
+        if (!isTaken || isSelected) {
+            div.onclick = () => selectRole(key);
+        }
+        grid.appendChild(div);
+    });
+    updateRoleUI();
+}
+
+function selectRole(roleKey) {
+    if (!G.roomId) { alert('请先加入房间'); return; }
+    const takenRoles = Object.values(G.players).map(p => p.roleId).filter(Boolean);
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (takenRoles.includes(roleKey) && myData?.roleId !== roleKey) {
+        alert('该角色已被选择');
+        return;
+    }
+    selectedRole = roleKey;
+    socket.emit('select-role', { roomId: G.roomId, roleId: roleKey });
+    // 本地先更新
+    if (G.mySocketId && G.players[G.mySocketId]) {
+        G.players[G.mySocketId].roleId = roleKey;
+        G.players[G.mySocketId].isReady = true;
+    }
+    G.myRoleKey = roleKey;
+    G.myReady = true;
+    renderRoles();
+    updateStartButton();
+}
+
+function updateRoleUI() {
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (myData) {
+        G.myRoleKey = myData.roleId;
+        G.myReady = myData.isReady || false;
+        selectedRole = G.myRoleKey;
+    }
+    // 更新状态文本
+    const total = Object.keys(G.players).length;
+    const ready = Object.values(G.players).filter(p => p.isReady).length;
+    const withRole = Object.values(G.players).filter(p => p.roleId).length;
+    $('role-status').textContent = `已选角色 ${withRole}/${total} · 已准备 ${ready}/${total}`;
+    $('room-info-bar').textContent = `🏠 房间 ${G.roomId} · ${total} 人已加入`;
+}
+
+function setReady() {
+    if (!selectedRole) { alert('请先选择一个角色'); return; }
+    if (!G.roomId) return;
+    socket.emit('select-role', { roomId: G.roomId, roleId: selectedRole });
+    G.myReady = true;
+    updateStartButton();
+    addSystemMessage('✅ 你已准备就绪');
+}
+
+function updateStartButton() {
+    const btn = $('btn-start-game');
+    if (!btn) return;
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    const isReady = myData?.isReady || false;
+    const hasRole = !!myData?.roleId;
+    const allReady = Object.values(G.players).every(p => p.isReady);
+    const hasPlayers = Object.keys(G.players).length >= 1;
+    btn.disabled = !(G.isRoomCreator && hasRole && isReady && allReady && hasPlayers);
+    if (!G.isRoomCreator) {
+        btn.textContent = '⏳ 等待房主开始...';
+        btn.disabled = true;
+    } else if (!hasRole) {
+        btn.textContent = '⚠️ 请先选择角色';
+    } else if (!isReady) {
+        btn.textContent = '✅ 点击"确认选择"准备';
+    } else if (!allReady) {
+        btn.textContent = '⏳ 等待其他玩家准备...';
+    } else {
+        btn.textContent = '▶ 开始游戏（房主）';
+        btn.disabled = false;
+    }
+}
+
+function startGame() {
+    if (!G.isRoomCreator) { alert('只有房主可以开始游戏'); return; }
+    if (!G.roomId) return;
+    const allReady = Object.values(G.players).every(p => p.isReady);
+    if (!allReady) { alert('还有玩家未准备'); return; }
+    socket.emit('start-game', G.roomId);
+}
+
+// ---------- 聊天 ----------
+function sendChat() {
+    const input = $('chat-input');
+    const text = input.value.trim();
+    if (!text || !G.roomId) return;
+    socket.emit('chat-message', { roomId: G.roomId, text });
+    input.value = '';
+    // 检查记忆触发（本地检测关键词）
+    checkMemoryTriggers(text);
+}
+
+function addChatMessage(who, text) {
+    G.chatLog.push({ who, text, time: Date.now() });
+    if (G.chatLog.length > 200) G.chatLog = G.chatLog.slice(-200);
+    renderChatLog();
+}
+
+function addSystemMessage(text) {
+    G.chatLog.push({ who: '系统', text, time: Date.now() });
+    renderChatLog();
+}
+
+function renderChatLog() {
+    const log = $('chat-log');
+    if (!log) return;
+    log.innerHTML = G.chatLog.slice(-60).map(m => {
+        const cls = (m.who === '系统' || m.who === 'AI主持') ? 'system' : '';
+        return `<div class="msg"><span class="who ${cls}">${m.who}</span>：${m.text}</div>`;
+    }).join('');
+    log.scrollTop = log.scrollHeight;
+}
+
+function renderPlayerList() {
+    const el = $('player-list');
+    if (!el) return;
+    const list = Object.values(G.players).map(p => 
+        `${p.name}${p.isAI ? ' (AI)' : ''}${p.roleId ? ' ['+p.roleId+']' : ' (未选)'}${p.isReady ? ' ✅' : ' ⏳'}`
+    ).join(' · ');
+    el.textContent = '👥 ' + list;
+}
+
+// ---------- 记忆触发 ----------
+function checkMemoryTriggers(text) {
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (!myData || !myData.roleId) return;
+    const roleKey = myData.roleId;
+    const role = ROLES[roleKey];
+    if (!role) return;
+    const triggered = G.memoriesTriggered[roleKey] || [];
+    role.memories.forEach(key => {
+        if (triggered.includes(key)) return;
+        if (text.includes(key) || text.includes(key.substring(0,3))) {
+            triggerMemoryForRole(roleKey, key);
+        }
+    });
+}
+
+function triggerMemory() {
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (!myData || !myData.roleId) { alert('请先选择角色'); return; }
+    const roleKey = myData.roleId;
+    const role = ROLES[roleKey];
+    const triggered = G.memoriesTriggered[roleKey] || [];
+    const available = role.memories.filter(k => !triggered.includes(k));
+    if (available.length === 0) { alert('你已经触发了所有记忆片段'); return; }
+    const choice = prompt('输入要触发的记忆关键词:\n' + available.join('、'));
+    if (!choice) return;
+    let matched = available.find(k => k.includes(choice) || choice.includes(k));
+    if (!matched) { alert('未匹配到关键词'); return; }
+    triggerMemoryForRole(roleKey, matched);
+}
+
+function triggerMemoryForRole(roleKey, memoryKey) {
+    const role = ROLES[roleKey];
+    if (!role) return;
+    const triggered = G.memoriesTriggered[roleKey] || [];
+    if (triggered.includes(memoryKey)) return;
+    const memoryText = role.memoryTexts[memoryKey] || '你回想起一些模糊的片段...';
+    socket.emit('trigger-memory', {
+        roomId: G.roomId,
+        memoryKey,
+        memoryText
+    });
+    // 本地立即显示
+    if (!G.memoriesTriggered[roleKey]) G.memoriesTriggered[roleKey] = [];
+    G.memoriesTriggered[roleKey].push(memoryKey);
+    $('memory-body').innerHTML = `
+        <div style="font-weight:700;color:var(--red);">${memoryKey}</div>
+        <div style="margin-top:8px;">${memoryText}</div>
+        <div style="margin-top:8px;font-size:0.75rem;color:var(--text-dim);">—— 你回忆起了一段被遗忘的往事</div>
+    `;
+    showModal('modal-memory');
+    addSystemMessage(`🧠 你触发了记忆「${memoryKey}」`);
+}
+
+// ---------- 调查 ----------
+function doInvestigate() {
+    if (!G.roomId) { alert('请先加入房间'); return; }
+    if (!G.started) { alert('游戏尚未开始'); return; }
+    // 检查调查次数
+    if (G.investigationCount >= 15) {
+        alert('本轮调查次数已用完（15次）');
+        return;
+    }
+    // 获取可调查线索
+    const all = Object.values(CLUES);
+    const found = G.cluesFound;
+    let available = all.filter(c => !found.includes(c.id));
+    if (G.phase === 0) {
+        available = available.filter(c => c.area.includes('一层'));
+    } else if (G.phase === 1 && !G.secondFloorUnlocked) {
+        available = available.filter(c => c.area.includes('一层'));
+    }
+    if (available.length === 0) { alert('当前没有可调查的线索了'); return; }
+    const list = available.map((c,i) => `${i+1}. ${c.title} (${c.area})`).join('\n');
+    const choice = prompt('选择要调查的线索（输入编号）:\n' + list);
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= available.length) { alert('无效选择'); return; }
+    const clue = available[idx];
+    socket.emit('investigate', { roomId: G.roomId, clueId: clue.id, clueData: clue });
+    addSystemMessage(`🔍 你调查了「${clue.title}」`);
+    // 检查秘密线索
+    const secretMap = { 'c9':'01', 'c11':'02', 'c12':'03', 'l1':'04', 'l2':'05', 'l4':'06' };
+    const sid = secretMap[clue.id];
+    if (sid && SECRET_CLUES[sid]) {
+        const s = SECRET_CLUES[sid];
+        if (!G.cluesFound.includes('sec_'+sid)) {
+            G.cluesFound.push('sec_'+sid);
+            addSystemMessage(`🔮 发现了秘密线索「${s.title}」: ${s.body}`);
+        }
+    }
+    updateUI();
+}
+
+// ---------- 投票 ----------
+function startVote() {
+    if (!G.roomId || !G.started) { alert('游戏尚未开始'); return; }
+    if (G.phase < 3) {
+        if (!confirm('尚未进入投票阶段，是否提前发起投票？')) return;
+    }
+    // 检查是否已投
+    if (G.votes[G.mySocketId]) {
+        if (!confirm('你已经投过票了，是否修改？')) return;
+    }
+    const options = $('vote-options');
+    if (!options) return;
+    let html = '';
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    Object.keys(ROLES).forEach(key => {
+        const r = ROLES[key];
+        const isMe = key === myData?.roleId;
+        const count = Object.values(G.votes).filter(v => v === key).length;
+        html += `
+            <div class="vote-option" data-role="${key}" onclick="selectVote('${key}')" style="${isMe ? 'opacity:0.5;' : ''}">
+                <span>${r.icon} ${r.name} ${isMe ? '(你自己)' : ''}</span>
+                <span class="votes">${count} 票</span>
+            </div>
+        `;
+    });
+    options.innerHTML = html;
+    $('vote-result').innerHTML = '';
+    window._selectedVote = null;
+    showModal('modal-vote');
+}
+
+function selectVote(roleKey) {
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (roleKey === myData?.roleId) { alert('不能投票给自己'); return; }
+    window._selectedVote = roleKey;
+    qsa('.vote-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.role === roleKey);
+    });
+}
+
+function submitVote() {
+    if (!window._selectedVote) { alert('请选择投票对象'); return; }
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (window._selectedVote === myData?.roleId) { alert('不能投票给自己'); return; }
+    socket.emit('vote', { roomId: G.roomId, targetRoleId: window._selectedVote });
+    addSystemMessage('🗳️ 你已投出神圣的一票');
+    closeModal('modal-vote');
+    updateUI();
+}
+
+// ---------- 推进阶段 ----------
+function nextPhase() {
+    if (!G.roomId || !G.started) { alert('游戏尚未开始'); return; }
+    if (G.phase >= 4) { alert('游戏已结束'); return; }
+    // 检查是否所有人都投了票（第三幕->投票）
+    if (G.phase === 2) {
+        const players = Object.keys(G.players).filter(id => !G.players[id].isAI);
+        const voted = Object.keys(G.votes);
+        const allVoted = players.every(id => voted.includes(id));
+        if (!allVoted) {
+            if (!confirm('还有玩家未投票，确定要进入投票阶段吗？')) return;
+        }
+    }
+    socket.emit('next-phase', G.roomId);
+}
+
+// ---------- UI更新 ----------
+function updateUI() {
+    // 进度条
+    const steps = qsa('.progress-steps .step');
+    steps.forEach((el, i) => {
+        el.classList.remove('active', 'done');
+        if (i < G.phase) el.classList.add('done');
+        if (i === G.phase) el.classList.add('active');
+    });
+    const phaseNames = ['寒暄', '二层', '真凶', '投票', '复盘'];
+    $('phase-badge').textContent = phaseNames[G.phase] || '未知';
+    $('game-time').textContent = `⏳ 第${G.phase+1}幕 · ${phaseNames[G.phase] || '未知'}`;
+    $('room-badge').textContent = `🏠 ${G.roomId || ''}`;
+    $('clue-count').textContent = `已获取: ${G.cluesFound.length}`;
+    // 我的角色
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (myData && myData.roleId && ROLES[myData.roleId]) {
+        const r = ROLES[myData.roleId];
+        $('my-role-display').textContent = r.icon + ' ' + r.name;
+        $('my-role-status').textContent = `第${G.phase+1}幕 · ${['寒暄','二层','真凶','投票','复盘'][G.phase] || ''}`;
+    } else if (myData) {
+        $('my-role-display').textContent = myData.name + ' (未选角色)';
+        $('my-role-status').textContent = '请选择角色';
+    }
+    // AI提示
+    const hints = ['请自我介绍，互相认识', '搜索二层，寻找真相', '深入调查，交换情报', '投票指认真凶', '游戏结束'];
+    $('ai-hint').textContent = hints[G.phase] || '等待中...';
+    // 投票状态
+    if (G.phase >= 3) {
+        $('phase-badge').textContent = '🗳️ 投票';
+    }
+    // 如果游戏已结束且phase=4，显示复盘
+    if (G.phase >= 4) {
+        showRecap();
+    }
+    // 更新投票UI
+    updateVoteUI();
+}
+
+function updateVoteUI() {
+    const options = qsa('.vote-option .votes');
+    options.forEach(el => {
+        const parent = el.closest('.vote-option');
+        if (parent) {
+            const key = parent.dataset.role;
+            const count = Object.values(G.votes).filter(v => v === key).length;
+            el.textContent = count + ' 票';
+        }
+    });
+}
+
+// ---------- 显示剧本 ----------
+function showMyScript() {
+    const myData = G.mySocketId ? G.players[G.mySocketId] : null;
+    if (!myData || !myData.roleId) { alert('请先选择角色'); return; }
+    const role = ROLES[myData.roleId];
+    if (!role) return;
+    $('modal-script-title').textContent = '📖 ' + role.name + ' 的剧本';
+    let body = `<div class="script-title">${role.icon} ${role.name}</div>`;
+    body += `<div style="font-size:0.8rem;color:var(--text-dim);margin:4px 0 8px 0;">${role.gender} · ${role.age} · ${role.desc}</div>`;
+    body += `<hr class="divider"><div>${role.script}</div>`;
+    body += `<hr class="divider"><div style="font-weight:700;">📌 你的目的：</div><div>${role.goal}</div>`;
+    body += `<hr class="divider"><div style="font-weight:700;">🧠 记忆关键词：</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">`;
+    role.memories.forEach(k => {
+        const triggered = (G.memoriesTriggered[myData.roleId] || []).includes(k);
+        body += `<span class="tag ${triggered ? 'tag-gold' : ''}">${k} ${triggered ? '✓' : '🔒'}</span>`;
+    });
+    body += `</div><hr class="divider"><div style="font-weight:700;">🎒 随身物品：</div><div>${role.items.join('、')}</div>`;
+    $('modal-script-body').innerHTML = body;
+    showModal('modal-script');
+}
+
+// ---------- 显示线索 ----------
+function showClues() {
+    const list = $('clue-list-modal');
+    if (!list) return;
+    const all = Object.values(CLUES);
+    const found = G.cluesFound;
+    let html = '<div class="clue-grid">';
+    all.forEach(c => {
+        const isFound = found.includes(c.id);
+        html += `
+            <div class="clue-card" style="${isFound ? '' : 'opacity:0.5;filter:blur(2px);'}">
+                <div class="clue-label">${c.area}</div>
+                <div class="clue-title">${c.title}</div>
+                <div class="clue-body">${isFound ? c.body : '🔒 尚未调查'}</div>
+                ${isFound ? '<span class="badge">已得</span>' : ''}
+            </div>
+        `;
+    });
+    // 秘密线索
+    Object.keys(SECRET_CLUES).forEach(k => {
+        const s = SECRET_CLUES[k];
+        const isFound = found.includes('sec_'+k);
+        html += `
+            <div class="clue-card" style="${isFound ? 'border-color:var(--gold);' : 'opacity:0.5;filter:blur(2px);'}">
+                <div class="clue-label" style="color:var(--gold);">🔮 秘密</div>
+                <div class="clue-title">${s.title}</div>
+                <div class="clue-body">${isFound ? s.body : '🔒 需特殊条件解锁'}</div>
+                ${isFound ? '<span class="badge" style="background:var(--gold);">已得</span>' : ''}
+            </div>
+        `;
+    });
+    html += '</div>';
+    list.innerHTML = html;
+    showModal('modal-clues');
+}
+
+// ---------- 复盘 ----------
+function showRecap() {
+    let html = `
+        <div style="font-size:1.1rem;font-weight:700;color:var(--red);text-align:center;letter-spacing:4px;">📜 雾起云浮 · 真相揭秘</div>
+        <hr class="divider">
+        <div style="font-size:0.85rem;line-height:2;">
+            <p><strong>🔍 核心真相</strong></p>
+            <p>云浮馆是西卜博士设计的「聚灵之地」，二层藏有尸体与炼金素材。</p>
+            <p>柯卫廉被柯江元杀害，后西卜博士与Mercy将其灵魂附在张嫂之子（零四）身上。</p>
+            <p>柯汉生被露曦（柯太太）用铜烛台击打后脑致死。</p>
+            <p>Mercy被云晴误当作露曦勒死。</p>
+            <p>柯江元为夺取遗嘱，戴面具刺杀雾晓未遂，后在大火中烧死。</p>
+            <p>零四目睹母亲张嫂的尸体后觉醒，放火烧毁云浮馆。</p>
+            <hr class="divider">
+            <p><strong>👥 角色结局</strong></p>
+            <p>• 柯太太（露曦）：杀害柯汉生，最终与女儿雾晓相认。</p>
+            <p>• 柯少爷（柯瞻）：为继承权而来，发现父亲柯江元已死。</p>
+            <p>• 云晴（叮儿）：误杀Mercy，与弟弟零四相认。</p>
+            <p>• 零四（柯卫廉）：放火后觉醒真实身份。</p>
+            <p>• 雾晓（露曦之女）：与母亲相认。</p>
+            <hr class="divider">
+            <p><strong>⚡ 投票结果</strong></p>
+            <div id="vote-result-recap"></div>
+            <hr class="divider">
+            <p style="font-size:0.8rem;color:var(--text-dim);text-align:center;">—— 贪爱沉溺为苦海，利欲炽燃是火坑 ——</p>
+        </div>
+    `;
+    $('recap-body').innerHTML = html;
+    // 投票统计
+    const voteStats = {};
+    Object.values(G.votes).forEach(v => { voteStats[v] = (voteStats[v] || 0) + 1; });
+    let voteHtml = '';
+    Object.keys(voteStats).forEach(k => {
+        const r = ROLES[k];
+        if (r) voteHtml += `<div>${r.icon} ${r.name}：${voteStats[k]} 票</div>`;
+    });
+    if (!voteHtml) voteHtml = '<div>暂无投票数据</div>';
+    $('vote-result-recap').innerHTML = voteHtml;
+    showModal('modal-recap');
+}
+
+// ---------- 初始化 ----------
+document.addEventListener('DOMContentLoaded', () => {
+    showScreen('screen-connect');
+    // 自动连接
+    connectSocket();
+});
+
+// 暴露全局
+window.createRoom = createRoom;
+window.joinRoom = joinRoom;
+window.leaveRoom = leaveRoom;
+window.selectRole = selectRole;
+window.setReady = setReady;
+window.startGame = startGame;
+window.sendChat = sendChat;
+window.showMyScript = showMyScript;
+window.showClues = showClues;
+window.doInvestigate = doInvestigate;
+window.triggerMemory = triggerMemory;
+window.nextPhase = nextPhase;
+window.startVote = startVote;
+window.selectVote = selectVote;
+window.submitVote = submitVote;
+window.showModal = showModal;
+window.closeModal = closeModal;
+window.showRecap = showRecap;
+window.addSystemMessage = addSystemMessage;
+
+console.log('🕯️ 雾起云浮 · 联机版已加载');
+console.log('📡 请确保 server.js 正在运行');
 </script>
 </body>
 </html>
